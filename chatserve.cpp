@@ -1,9 +1,8 @@
 //
-//  main.cpp
+//  chatserve.cpp
 //  chatserve
 //
-//  Created by jamie + andrew on 4/19/16.
-//  Copyright (c) 2016 Andrew Brown. All rights reserved.
+//  Created by andrew on 4/19/16.
 //
 
 #include <stdio.h>
