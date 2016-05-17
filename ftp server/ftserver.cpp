@@ -34,16 +34,6 @@ void set_nonblock(int socket) {
     fcntl(socket, F_SETFL, flags | O_NONBLOCK); //set socket to non blocking
 }
 
-void sigchld_handler(int s)
-{
-	// waitpid() might overwrite errno, so we save and restore it:
-	int saved_errno = errno;
-
-	while(waitpid(-1, NULL, WNOHANG) > 0);
-
-	errno = saved_errno;
-}
-
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -226,10 +216,11 @@ void chat(int socket, fd_set *readfds, fd_set *writefds){
     return;
 }
 
+MSG_SIZE = 500;
 
 int main(int argc, char *argv[])
 {
-	int serverSocket, connectionSocket;  // socket file descriptors
+	int serverSocket, connectionSocket, dataSocket;  // socket file descriptors
 	struct addrinfo options, *servinfo, *p;
 	struct sockaddr_storage their_addr; // client information
 	fd_set readfds,writefds; // flags will use
@@ -239,10 +230,11 @@ int main(int argc, char *argv[])
 	char s[INET6_ADDRSTRLEN]; //THIS WILL HOLD INCOMING IP ADDRESS
 	int rv;
 	bool keepChatting;
+    char msgBuffer[MSG_SIZE];
 
     //handle incorrect usage
 	if (argc != 2) {
-	    fprintf(stderr,"usage: chatserve portnum\n");
+	    std::cerr << "Usage: " << argv[0] << "<port number>" << std::endl;
 	    exit(1);
 	}
 
@@ -267,13 +259,6 @@ int main(int argc, char *argv[])
     //call to serverSetup function after which serverSocket will contain the socket number
     serverSocket = serverSetup(serverSocket, p, sa, servinfo, yes);
 
-	sa.sa_handler = sigchld_handler; // reap all dead processes
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-		perror("sigaction");
-		exit(1);
-	}
 
 	printf ("The magic happens on port: \"%s\".\n",argv[1]);
 
