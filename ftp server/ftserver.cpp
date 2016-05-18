@@ -89,45 +89,20 @@ int serverSetup(int serverSocket, struct addrinfo *p, struct sigaction sa, struc
 
 /*Function: sendMessage
  * receives an int, which is the connected socket
- * sends a message, detects if it is \quit
- * returns -1, 0 or 1 which allows parent function "chat" to determine if user desires to quit
+ * sends a message
  */
-int sendMessage(int connection, fd_set *writefds){
-    char msg[MAX];
-    int length;
-    int quit = 1;
-    struct timeval tv;
-    int rv;
+void sendMessage(char* msg, int length, int connection){
+    
+    if (send(connection, msg, length, 0) == -1){
+        perror("send");
+    }
 
-    // clear the set ahead of time
-    FD_ZERO(writefds);
-
-    // add our descriptors to the set
-    FD_SET(connection, writefds);
-
-        //SEND MESSAGES
-        if (FD_ISSET(connection, writefds)) {
-            printf("%s%s","Arnold Schwarzenegger","> ");
-            fgets(msg, MAX, stdin);
-            length = strlen(msg);
-            msg[length-1] = '\n';
-
-            if(strncmp(msg, "\\quit", 5) == 0){
-                quit = 0;
-            }
-        }
-        if (send(connection, msg, length, 0) == -1){
-            quit = -1;
-            perror("send");
-        }
-
-    return quit;
 }
 
 /*Function: sendMessage
  * receives an int, which is the connected socket
- * receives a message and prints it to screen
- * returns -1, 0 or 1 which allows parent function "chat" to determine if client quit
+ * receives command argument(s) from client and prints to screen
+ * returns tokenized array containing commands
  */
 char** getMessage(int connection){
     char buf[MAX];
@@ -162,6 +137,29 @@ char** getMessage(int connection){
         }
     }
     return tokens;
+}
+
+/*Function: execCMd
+ * receives tokenized array containing arguments, int for client fd, int for data fd
+ * returns executes commands based on the arguments
+ */
+void execCmd(char** args, int connectionFd, int dataFd){
+    //if user wants to see list of files
+    if(strncmp(args[3], "-1", 2) == 0){
+        FILE *dir = popen("ls", "r");
+        char buff[500];
+        int length;
+        fread(&buff[0], sizeof buff[0], 500, dir);
+        
+        int i;
+        while(buff[i] != 0){
+            i++;        
+        }
+        length = i;
+        sendMessage(buff, length, connectionFd);
+    }
+    
+    //if user wants to download a file
 }
 
 
