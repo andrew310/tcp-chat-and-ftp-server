@@ -132,8 +132,8 @@ int sendMessage(int connection, fd_set *writefds){
 char** getMessage(int connection){
     char buf[MAX];
     int numbytes;
-    char* args;
-    char** tokens = malloc(sizeof(char*) * 512);
+    char* arg = NULL;
+    char** tokens = (char**)malloc(sizeof(char*) * 100);
 
     numbytes = recv(connection, buf, MAX-1, 0);
 
@@ -153,11 +153,10 @@ char** getMessage(int connection){
     else {
         //buf[numbytes] = '\0';
         printf("%s",buf);
-        args = strtok(buf, "\n");
+        arg = strtok(buf, "\n");
         int i = 0;
-        while (args != NULL) {
-            strcpy(cmd_args[i], args);
-            args = strtok(NULL, "\n");
+        while (arg != NULL) {
+            arg = strtok(NULL, "\n");
             tokens[i] = arg;
             i++;
         }
@@ -165,35 +164,6 @@ char** getMessage(int connection){
     return tokens;
 }
 
-/*Function: chat
- * receives an int, which is the host socket
- * messages are received and sent until one party disconnects
- */
-void chat(int socket, fd_set *readfds, fd_set *writefds){
-    int stopChat = 1;
-    //note the 1 in while(1) is unrelated to stopChat
-    while(1){
-        if(getMessage(socket, readfds) < 1){
-            printf("chat ended by client");
-        }
-
-        stopChat = sendMessage(socket, writefds);
-        if (stopChat== 0){
-            printf("chat ended by host");
-            close(socket);
-            exit(0);
-        } else if (stopChat == -1){
-            perror("Client connection lost");
-            exit(0);
-        } else{
-
-        }
-    }
-    printf("chat ended");
-    return;
-}
-
-MSG_SIZE = 500;
 
 int main(int argc, char *argv[])
 {
@@ -207,11 +177,11 @@ int main(int argc, char *argv[])
 	char s[INET6_ADDRSTRLEN]; //THIS WILL HOLD INCOMING IP ADDRESS
 	int rv;
 	bool keepChatting;
-    char msgBuffer[MSG_SIZE];
+    char msgBuffer[MAX];
 
     //handle incorrect usage
 	if (argc != 2) {
-	    std::cerr << "Usage: " << argv[0] << "<port number>" << std::endl;
+	    perror("Usage: arg <port number>");
 	    exit(1);
 	}
 
