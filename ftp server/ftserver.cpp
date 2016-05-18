@@ -1,8 +1,8 @@
 //
-//  chatserve.cpp
-//  chatserve
+//  ftserver.cpp
+//  file transfer server
 //
-//  Created by andrew on 4/19/16.
+//  Created by andrew on 5/9/16.
 // references: Beej's guide
 
 #include <stdio.h>
@@ -21,18 +21,10 @@
 #include <cassert>
 #include <sys/select.h>
 
-#define HOSTHANDLE "breakerBreaker"
 
 #define BACKLOG 10	 // how many pending connections queue will hold
 #define MAX 500 //max message size
 
-
-void set_nonblock(int socket) {
-    int flags;
-    flags = fcntl(socket,F_GETFL,0);
-    assert(flags != -1);
-    fcntl(socket, F_SETFL, flags | O_NONBLOCK); //set socket to non blocking
-}
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -56,14 +48,12 @@ int serverSetup(int serverSocket, struct addrinfo *p, struct sigaction sa, struc
     	 */
 	for(p = servinfo; p != NULL; p = p->ai_next) {
             /*MAKE SOCKET */
-		if ((serverSocket = socket(p->ai_family, p->ai_socktype,
-				p->ai_protocol)) == -1) {
+		if ((serverSocket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			perror("server: socket");
 			continue;
 		}
         //allows us to reuse the socket
-		if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes,
-				sizeof(int)) == -1) {
+		if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			perror("setsockopt");
 			exit(1);
 		}
@@ -139,34 +129,14 @@ int sendMessage(int connection, fd_set *writefds){
  * receives a message and prints it to screen
  * returns -1, 0 or 1 which allows parent function "chat" to determine if client quit
  */
-int getMessage(int connection, fd_set *readfds){
+char** getMessage(int connection){
     char buf[MAX];
     int numbytes;
-    //fd_set readfds;
-    struct timeval tv;
-    int rv;
+    char* args;
+    char** tokens = malloc(sizeof(char*) * 512);
 
-    // clear the set ahead of time
-    FD_ZERO(readfds);
+    numbytes = recv(connection, buf, MAX-1, 0);
 
-    // add our descriptors to the set
-    FD_SET(connection, readfds);
-
-    tv.tv_sec = 10;
-    tv.tv_usec = 500000;
-
-    rv = select(connection+1, readfds, NULL, NULL, &tv);
-
-    if (rv == -1) {
-        perror("select"); // error occurred in select()
-    } else if (rv == 0) {
-        printf("Timeout occurred!  No data after 10.5 seconds.\n");
-    } else {
-    //RECEIVE MESSAGES
-        if (FD_ISSET(connection, readfds)) {
-            numbytes = recv(connection, buf, MAX-1, 0);
-        }
-    }
     //if connection lost and there is an error, break looP and print error message
     if (numbytes == -1) {
         perror("recv");
@@ -176,16 +146,23 @@ int getMessage(int connection, fd_set *readfds){
      * http://stackoverflow.com/questions/2416944/can-read-function-on-a-connected-socket-return-zero-bytes
      */
     else if (numbytes == 0) {
-        printf("Client has left the chat.\n");
+        printf("Connection lost.\n");
         exit(0);
     }
     //no error, print the message
     else {
-        buf[numbytes] = '\0';
+        //buf[numbytes] = '\0';
         printf("%s",buf);
+        args = strtok(buf, "\n");
+        int i = 0;
+        while (args != NULL) {
+            strcpy(cmd_args[i], args);
+            args = strtok(NULL, "\n");
+            tokens[i] = arg;
+            i++;
+        }
     }
-
-    return 1;
+    return tokens;
 }
 
 /*Function: chat
@@ -258,36 +235,26 @@ int main(int argc, char *argv[])
 
     //call to serverSetup function after which serverSocket will contain the socket number
     serverSocket = serverSetup(serverSocket, p, sa, servinfo, yes);
-
-
 	printf ("The magic happens on port: \"%s\".\n",argv[1]);
+
+    sin_size = sizeof their_addr;
+    connectionSocket = accept(serverSocket, (struct sockaddr *)&their_addr, &sin_size);
+    //inet_ntop converts IPv4 and IPv6 addresses from binary to text form
+    //see: http://man7.org/linux/man-pages/man3/inet_ntop.3.html
+    inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+    printf("server: got connection from %s\n", s);
+
+
+
 
     //the main loop to accept incoming connection
 	while(1) {
-		sin_size = sizeof their_addr;
-		connectionSocket = accept(serverSocket, (struct sockaddr *)&their_addr, &sin_size);
-		set_nonblock(connectionSocket);
-		if (connectionSocket == -1) {
-			perror("accept");
-			continue;
-		}
+        //TODO: receive
+        close(serverSocket); // child doesn't need the listener
+        close(connectionSocket);  // parent doesn't need this
 
-        //inet_ntop converts IPv4 and IPv6 addresses from binary to text form
-        //see: http://man7.org/linux/man-pages/man3/inet_ntop.3.html
-		inet_ntop(their_addr.ss_family,
-			get_in_addr((struct sockaddr *)&their_addr),
-			s, sizeof s);
-		printf("server: got connection from %s\n", s);
 
-        //multithreading
-		if (!fork()) { // this is the child process
-			close(serverSocket); // child doesn't need the listener
-            chat(connectionSocket, &readfds, &writefds);
-			//close(connectionSocket);
-			exit(0);
-		}
-		close(connectionSocket);  // parent doesn't need this
-	}
+	}//end of while loop
 
 	return 0;
 }
