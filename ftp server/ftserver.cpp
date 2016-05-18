@@ -110,6 +110,8 @@ char** getMessage(int connection){
     char* arg = NULL;
     char** tokens = (char**)malloc(sizeof(char*) * 100);
 
+    printf("waiting for incoming commands on portno %d\n", connection);
+    //waits for message from client
     numbytes = recv(connection, buf, MAX-1, 0);
 
     //if connection lost and there is an error, break looP and print error message
@@ -215,11 +217,12 @@ int main(int argc, char *argv[])
 
 
 
-    //the main loop to accept incoming connection
+    //the main loop to accept incoming requests
 	while(1) {
-        //TODO: receive
-        close(serverSocket); // child doesn't need the listener
-        close(connectionSocket);  // parent doesn't need this
+        
+        getMessage(connectionSocket);
+        close(serverSocket); 
+        close(connectionSocket); 
 
 
 	}//end of while loop
