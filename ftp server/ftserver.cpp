@@ -26,6 +26,15 @@
 #define MAX 500 //max message size
 
 
+
+void sigchld_handler(int s)
+{
+	int saved_errno = errno;
+	while(waitpid(-1, NULL, WNOHANG) > 0);
+	errno = saved_errno;
+}
+
+
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -207,22 +216,35 @@ int main(int argc, char *argv[])
     serverSocket = serverSetup(serverSocket, p, sa, servinfo, yes);
 	printf ("The magic happens on port: \"%s\".\n",argv[1]);
 
-    sin_size = sizeof their_addr;
-    connectionSocket = accept(serverSocket, (struct sockaddr *)&their_addr, &sin_size);
-    //inet_ntop converts IPv4 and IPv6 addresses from binary to text form
-    //see: http://man7.org/linux/man-pages/man3/inet_ntop.3.html
-    inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-    printf("server: got connection from %s\n", s);
-
+    //reap dead children processes
+	sa.sa_handler = sigchld_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+		perror("sigaction");
+		exit(1);
+	}
 
 
 
     //the main loop to accept incoming requests
 	while(1) {
         
-        getMessage(connectionSocket);
-        close(serverSocket); 
-        close(connectionSocket); 
+        sin_size = sizeof their_addr;
+        connectionSocket = accept(serverSocket, (struct sockaddr *)&their_addr, &sin_size);
+        //inet_ntop converts IPv4 and IPv6 addresses from binary to text form
+        //see: http://man7.org/linux/man-pages/man3/inet_ntop.3.html
+        inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+        printf("server: got connection from %s\n", s);
+        
+        
+		if (!fork()) { // this is the child process
+			close(serverSocket); // child doesn't need the listener
+            getMessage(connectionSocket);
+			//close(connectionSocket);
+			exit(0);
+		}
+		close(connectionSocket);  // parent doesn't need this
 
 
 	}//end of while loop
