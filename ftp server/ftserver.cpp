@@ -101,7 +101,7 @@ int serverSetup(int serverSocket, struct addrinfo *p, struct sigaction sa, struc
  * sends a message
  */
 void sendMessage(char* msg, int length, int connection){
-    
+
     if (send(connection, msg, length, 0) == -1){
         perror("send");
     }
@@ -119,7 +119,7 @@ char** getMessage(int connection){
     char* arg = NULL;
     char** tokens = (char**)malloc(sizeof(char*) * 100);
 
-    printf("waiting for incoming commands on portno %d\n", connection);
+    printf("waiting for incoming commands on port number: %d\n", connection);
     //waits for message from client
     numbytes = recv(connection, buf, MAX-1, 0);
 
@@ -138,7 +138,7 @@ char** getMessage(int connection){
     //no error, print the message
     else {
         //buf[numbytes] = '\0';
-        printf("%s",buf);
+        printf("Message: %s\n",buf);
         arg = strtok(buf, "\n");
         int i = 0;
         while (arg != NULL) {
@@ -161,15 +161,15 @@ void execCmd(char** args, int connectionFd, int dataFd){
         char buff[500];
         int length;
         fread(&buff[0], sizeof buff[0], 500, dir);
-        
+
         int i;
         while(buff[i] != 0){
-            i++;        
+            i++;
         }
         length = i;
         sendMessage(buff, length, connectionFd);
     }
-    
+
     //if user wants to download a file
 }
 
@@ -225,22 +225,20 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-
-
-    //the main loop to accept incoming requests
+  //the main loop to accept incoming requests
 	while(1) {
-        
+
         sin_size = sizeof their_addr;
         connectionSocket = accept(serverSocket, (struct sockaddr *)&their_addr, &sin_size);
         //inet_ntop converts IPv4 and IPv6 addresses from binary to text form
         //see: http://man7.org/linux/man-pages/man3/inet_ntop.3.html
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
         printf("server: got connection from %s\n", s);
-        
-        
+
+
 		if (!fork()) { // this is the child process
 			close(serverSocket); // child doesn't need the listener
-            getMessage(connectionSocket);
+      getMessage(connectionSocket);
 			//close(connectionSocket);
 			exit(0);
 		}
