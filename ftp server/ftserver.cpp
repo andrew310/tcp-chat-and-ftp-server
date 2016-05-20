@@ -139,14 +139,16 @@ char** getMessage(int connection){
     else {
         //buf[numbytes] = '\0';
         printf("Message: %s\n",buf);
-        arg = strtok(buf, "\n");
+        arg = strtok(buf, " ");
+				printf("arg: %s\n", arg);
         int i = 0;
         while (arg != NULL) {
-            arg = strtok(NULL, "\n");
+            arg = strtok(NULL, " ");
             tokens[i] = arg;
             i++;
         }
     }
+		printf("token: %s\n", tokens[0] );
     return tokens;
 }
 
@@ -155,18 +157,20 @@ char** getMessage(int connection){
  * returns executes commands based on the arguments
  */
 void execCmd(char** args, int connectionFd, int dataFd){
+		printf("HI FROM EXEC %s\n", args[0] );
     //if user wants to see list of files
-    if(strncmp(args[3], "-1", 2) == 0){
+    if(strncmp(args[0], "-1", 2) == 0){
+				printf("here is the arg: %s\n", args[0]);
         FILE *dir = popen("ls", "r");
         char buff[500];
         int length;
         fread(&buff[0], sizeof buff[0], 500, dir);
-
         int i;
         while(buff[i] != 0){
             i++;
         }
         length = i;
+				printf("sending...\n");
         sendMessage(buff, length, connectionFd);
     }
 
@@ -186,7 +190,8 @@ int main(int argc, char *argv[])
 	char s[INET6_ADDRSTRLEN]; //THIS WILL HOLD INCOMING IP ADDRESS
 	int rv;
 	bool keepChatting;
-    char msgBuffer[MAX];
+  char msgBuffer[MAX];
+	char** tokens = NULL;
 
     //handle incorrect usage
 	if (argc != 2) {
@@ -238,7 +243,9 @@ int main(int argc, char *argv[])
 
 		if (!fork()) { // this is the child process
 			close(serverSocket); // child doesn't need the listener
-      getMessage(connectionSocket);
+      tokens = getMessage(connectionSocket);
+			printf("token: %s\n", tokens[0]);
+			execCmd(tokens, connectionSocket, dataSocket);
 			//close(connectionSocket);
 			exit(0);
 		}
