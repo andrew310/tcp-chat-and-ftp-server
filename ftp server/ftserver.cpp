@@ -173,9 +173,31 @@ void execCmd(char** args, int connectionFd, int dataFd){
 				printf("sending...\n");
         sendMessage(buff, length, connectionFd);
     }
+		//read file into byte array
+		//ref: http://www.codecodex.com/wiki/Read_a_file_into_a_byte_array
+		//ref2: http://stackoverflow.com/questions/5594042/c-send-file-to-socket
+		else if (strncmp(args[0], "-g", 2) == 0 && args[1] != NULL) {
+				printf("opening file: %s\n", args[1]);
+				FILE *fl = fopen(args[1], "r");
+				if (fl == NULL) {
+						perror("error opening file");
+				}//TODO: add current directory information
+				fseek(fl, 0, SEEK_END);
+				long len = ftell(fl);
+				char *ret = (char*)malloc(len);
+				fseek(fl, 0, SEEK_SET);
+				printf("sending the goods...\n");
+				size_t nbytes = 0;
+				while ((nbytes = fread(ret, 1, 500, fl)) > 0) {
+						send(connectionFd, ret, nbytes, 0);
+				}
+				fclose(fl);
+				printf("done sending the goods\n");
+
+		}
 
     //if user wants to download a file
-}
+}//end of execCmd
 
 
 int main(int argc, char *argv[])

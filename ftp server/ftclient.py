@@ -10,7 +10,7 @@ import os
 MSGLEN = 100
 
 def sendCommand(socket, msg):
-    print "sending the goods" + msg
+    print "sending the command \n" + msg
     socket.send(msg)
 
 def getResponse(socket):
@@ -61,14 +61,22 @@ def main():
             print msg
 
 
-    else:
+    elif sys.argv[3] == '-g':
+        #connect
         clientSocket.connect((hostName, hostPort))
+        #dataSocket.connect((hostName, hostPort))
         sendCommand(clientSocket, context)
-        res = clientSocket.recv(500)
 
-        if res:
-            print res + '\n'
-            sys.exit(0)
+        file = open(sys.argv[4] + ".received", "a")
+        while 1:
+            res = clientSocket.recv(500)
+
+            if not res:
+                break
+
+            file.write(res)
+
+            file.close
 
 
 
