@@ -117,7 +117,7 @@ char** getMessage(int connection){
     char buf[MAX];
     int numbytes;
     char* arg = NULL;
-    char** tokens = (char**)malloc(sizeof(char*) * 100);
+    char** tokens = (char**)malloc(sizeof(char*) *6);
 
     printf("waiting for incoming commands on port number: %d\n", connection);
     //waits for message from client
@@ -139,8 +139,8 @@ char** getMessage(int connection){
     else {
         //buf[numbytes] = '\0';
         printf("Message: %s\n",buf);
-        arg = strtok(buf, " ");
-				printf("arg: %s\n", arg);
+        arg = strtok(buf, "\n");
+		printf("arg: %s\n", arg);
         int i = 0;
         while (arg != NULL) {
             arg = strtok(NULL, " ");
@@ -148,7 +148,7 @@ char** getMessage(int connection){
             i++;
         }
     }
-		printf("token: %s\n", tokens[0] );
+
     return tokens;
 }
 
@@ -209,7 +209,7 @@ void execCmd(char** args, int connectionFd, int dataFd){
 
 int main(int argc, char *argv[])
 {
-	int serverSocket, connectionSocket, dataSocket;  // socket file descriptors
+	int serverSocket, connectionSocket, dataSocket, dataFd;  // socket file descriptors
 	struct addrinfo options, *servinfo, *p;
 	struct sockaddr_storage their_addr; // client information
 	fd_set readfds,writefds; // flags will use
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
 	char s[INET6_ADDRSTRLEN]; //THIS WILL HOLD INCOMING IP ADDRESS
 	int rv;
 	bool keepChatting;
-  char msgBuffer[MAX];
+  	char msgBuffer[MAX];
 	char** tokens = NULL;
 
     //handle incorrect usage
@@ -272,10 +272,19 @@ int main(int argc, char *argv[])
 
 		if (!fork()) { // this is the child process
 			close(serverSocket); // child doesn't need the listener
-      tokens = getMessage(connectionSocket);
-			printf("token: %s\n", tokens[0]);
-			execCmd(tokens, connectionSocket, dataSocket);
-			//close(connectionSocket);
+      		tokens = getMessage(connectionSocket);
+			printf("token: %s\n", tokens[2]);
+			rv = getaddrinfo(NULL, tokens[2], &options, &servinfo);
+			//if getaddrinfo didn't return errorless
+			if (rv != 0) {
+				fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+				return 1;
+			}
+			dataSocket = serverSetup(dataSocket, p, sa, servinfo, yes);
+			dataFd = accept(dataSocket, (struct sockaddr *)&their_addr, &sin_size);
+			inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
+			execCmd(tokens, dataSocket, dataSocket);
+			close(dataSocket);
 			exit(0);
 		}
 		close(connectionSocket);  // parent doesn't need this

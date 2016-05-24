@@ -30,7 +30,7 @@ def main():
     elif(len(sys.argv) == 5):
         context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4]])
     elif(len(sys.argv) == 6):
-        context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]])
+        context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], "\n"])
 
     #print len(sys.argv)
 
@@ -55,7 +55,7 @@ def main():
         #dataSocket.connect((hostName, hostPort))
         sendCommand(clientSocket, context)
 
-        file = open(sys.argv[4] + ".received", "a")
+        file = open(sys.argv[4] + ".downloaded", "a")
         while 1:
             res = clientSocket.recv(500)
 
