@@ -48,20 +48,8 @@ def main():
     #setup for signal interrupt to close socket
     signal.signal(signal.SIGINT, handler)
 
-    if sys.argv[3] == '-1':
-        #print context + " hi "
-        #send on the dataSocket so it will be received here
-        clientSocket.connect((hostName, hostPort))
-        sendCommand(clientSocket, context)
 
-        while 1:
-            res = clientSocket.recv(500)
-            if not res:
-                break
-            print res
-
-
-    elif sys.argv[3] == '-g':
+    if sys.argv[3] == '-g':
         #connect
         clientSocket.connect((hostName, hostPort))
         #dataSocket.connect((hostName, hostPort))
@@ -77,6 +65,18 @@ def main():
             file.write(res)
 
             file.close
+
+    else:
+        #print context + " hi "
+        #send on the dataSocket so it will be received here
+        clientSocket.connect((hostName, hostPort))
+        sendCommand(clientSocket, context)
+
+        while 1:
+            res = clientSocket.recv(500)
+            if not res:
+                break
+            print res
 
 
 

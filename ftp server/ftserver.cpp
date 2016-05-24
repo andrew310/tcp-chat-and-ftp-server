@@ -157,10 +157,11 @@ char** getMessage(int connection){
  * returns executes commands based on the arguments
  */
 void execCmd(char** args, int connectionFd, int dataFd){
-		printf("HI FROM EXEC %s\n", args[0] );
+		printf("received arg: %s\n", args[0]);
+
     //if user wants to see list of files
     if(strncmp(args[0], "-1", 2) == 0){
-				printf("here is the arg: %s\n", args[0]);
+				//ref: http://stackoverflow.com/questions/671461/how-can-i-execute-external-commands-in-c-linux
         FILE *dir = popen("ls", "r");
         char buff[500];
         int length;
@@ -173,6 +174,8 @@ void execCmd(char** args, int connectionFd, int dataFd){
 				printf("sending...\n");
         sendMessage(buff, length, connectionFd);
     }
+
+		//if user wants to download a file
 		//read file into byte array
 		//ref: http://www.codecodex.com/wiki/Read_a_file_into_a_byte_array
 		//ref2: http://stackoverflow.com/questions/5594042/c-send-file-to-socket
@@ -195,8 +198,12 @@ void execCmd(char** args, int connectionFd, int dataFd){
 				printf("done sending the goods\n");
 
 		}
+		//invalid command received
+		else{
+			char errmsg[] = "ftserver: invalid command";
+			sendMessage(errmsg, 15, connectionFd);
+		}
 
-    //if user wants to download a file
 }//end of execCmd
 
 
