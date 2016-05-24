@@ -10,7 +10,7 @@ import os
 MSGLEN = 100
 
 def sendCommand(socket, msg):
-    print "sending the command \n" + msg
+    print "ftclient: sending the command to " + sys.argv[1]
     socket.send(msg)
 
 def getResponse(socket):
@@ -23,16 +23,16 @@ def getResponse(socket):
 def main():
 
     context = ""
-    if(len(sys.argv) < 4):
-        print "Usage: ./ftclient.py <hostname> <port number> <arg>"
+    if(len(sys.argv) < 5):
+        print "Usage: ./ftclient.py <hostname> <port number> <arg> <data port number>"
         sys.exit(0)
-    elif(len(sys.argv) == 4):
         #basically just building a string out of the argv just like how it would appear in c
-        context = " ".join([sys.argv[2], sys.argv[3]])
     elif(len(sys.argv) == 5):
         context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4]])
+    elif(len(sys.argv) == 6):
+        context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]])
 
-    print len(sys.argv)
+    #print len(sys.argv)
 
     #server socket information
     hostName = sys.argv[1]
@@ -48,17 +48,17 @@ def main():
     #setup for signal interrupt to close socket
     signal.signal(signal.SIGINT, handler)
 
-    if sys.argv[3] == -1:
-        print context + " hi "
+    if sys.argv[3] == '-1':
+        #print context + " hi "
         #send on the dataSocket so it will be received here
         clientSocket.connect((hostName, hostPort))
         sendCommand(clientSocket, context)
 
         while 1:
             res = clientSocket.recv(500)
-            if not msg:
+            if not res:
                 break
-            print msg
+            print res
 
 
     elif sys.argv[3] == '-g':
