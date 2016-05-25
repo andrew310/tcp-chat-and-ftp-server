@@ -140,6 +140,7 @@ char** getMessage(int connection){
         //buf[numbytes] = '\0';
         printf("Message: %s\n",buf);
         arg = strtok(buf, "\n");
+		arg = strtok(buf, " ");
 		printf("arg: %s\n", arg);
         int i = 0;
         while (arg != NULL) {
@@ -148,7 +149,6 @@ char** getMessage(int connection){
             i++;
         }
     }
-
     return tokens;
 }
 
@@ -156,8 +156,20 @@ char** getMessage(int connection){
  * receives tokenized array containing arguments, int for client fd, int for data fd
  * returns executes commands based on the arguments
  */
-void execCmd(char** args, int connectionFd, int dataFd){
-		printf("received arg: %s\n", args[0]);
+void execCmd(char** args, int connectionFd, char* ip){
+	printf("received arg: %s\n", args[0]);
+
+	//set up data socket client
+	int sockfd, numbytes;
+	char buf[MAX];
+	struct addrinfo hints, *servinfo, *p;
+	int rv;
+	char s[INET6_ADDRSTRLEN];
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
 
     //if user wants to see list of files
     if(strncmp(args[0], "-1", 2) == 0){
@@ -172,7 +184,43 @@ void execCmd(char** args, int connectionFd, int dataFd){
         }
         length = i;
 				printf("sending...\n");
-        sendMessage(buff, length, connectionFd);
+
+		//set up data socket
+		if ((rv = getaddrinfo(ip, args[1], &hints, &servinfo)) != 0) {
+			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+			exit(1);
+		}
+
+		// loop through all the results and connect to the first we can
+		for(p = servinfo; p != NULL; p = p->ai_next) {
+			if ((sockfd = socket(p->ai_family, p->ai_socktype,
+					p->ai_protocol)) == -1) {
+				perror("client: socket");
+				continue;
+			}
+
+			if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+				close(sockfd);
+				perror("client: connect");
+				continue;
+			}
+
+		if (p == NULL) {
+			fprintf(stderr, "ftserver: failed to connect on data socket\n");
+			exit(1);
+		}
+
+		inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+		s, sizeof s);
+		printf("ftserver: connecting to %s\n", s);
+
+		freeaddrinfo(servinfo); // all done with this structure
+
+			break;
+		}
+
+        sendMessage(buff, length, sockfd);
+		close(sockfd);
     }
 
 		//if user wants to download a file
@@ -269,21 +317,11 @@ int main(int argc, char *argv[])
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
         printf("server: got connection from %s\n", s);
 
-
 		if (!fork()) { // this is the child process
 			close(serverSocket); // child doesn't need the listener
       		tokens = getMessage(connectionSocket);
-			printf("token: %s\n", tokens[2]);
-			rv = getaddrinfo(NULL, tokens[2], &options, &servinfo);
-			//if getaddrinfo didn't return errorless
-			if (rv != 0) {
-				fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-				return 1;
-			}
-			dataSocket = serverSetup(dataSocket, p, sa, servinfo, yes);
-			dataFd = accept(dataSocket, (struct sockaddr *)&their_addr, &sin_size);
-			inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-			execCmd(tokens, dataSocket, dataSocket);
+			printf("token: %s\n", tokens[0]);
+			execCmd(tokens, connectionSocket, s);
 			close(dataSocket);
 			exit(0);
 		}

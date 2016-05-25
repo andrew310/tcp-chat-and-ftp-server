@@ -6,8 +6,23 @@ import sys
 from socket import *
 import signal
 import os
+import SocketServer
 
 MSGLEN = 100
+
+
+#This will be used to listen on the data connection
+#reference: https://docs.python.org/2/library/socketserver.html
+class MyTCPHandler(SocketServer.BaseRequestHandler):
+    def handle(self):
+        # self.request is the TCP socket connected to the client
+        self.data = self.request.recv(1024).strip()
+        print "{} wrote:".format(self.client_address[0])
+        print self.data
+        # just send back the same data, but upper-cased
+        self.request.sendall(self.data.upper())
+
+
 
 def sendCommand(socket, msg):
     print "ftclient: sending the command to " + sys.argv[1]
@@ -22,6 +37,7 @@ def getResponse(socket):
 
 def main():
 
+    argsCount = len(sys.argv)
     context = ""
     if(len(sys.argv) < 5):
         print "Usage: ./ftclient.py <hostname> <port number> <arg> <data port number>"
@@ -39,8 +55,14 @@ def main():
     hostPort = int(sys.argv[2]);
     #assign client socket, use my ip
     clientSocket = socket(AF_INET, SOCK_STREAM)
+
     #separate socket for receiving data
+    host = ''
+    port = int(sys.argv[argsCount-1])
+    backlog = 5
     dataSocket = socket(AF_INET, SOCK_STREAM)
+    dataSocket.bind((host, port))
+
 
     #close sockets safely when we ctrl+c
     def handler(sig, frame):
@@ -52,19 +74,24 @@ def main():
     if sys.argv[3] == '-g':
         #connect
         clientSocket.connect((hostName, hostPort))
-        #dataSocket.connect((hostName, hostPort))
         sendCommand(clientSocket, context)
 
-        file = open(sys.argv[4] + ".downloaded", "a")
-        while 1:
-            res = clientSocket.recv(500)
+        dataSocket.listen(backlog)
+        print "listening on data socket"
 
+        file = open(sys.argv[4] + ".downloaded", "a")
+
+        #accept incoming connections on data socket
+        #ref: http://ilab.cs.byu.edu/python/socket/echoserver.html
+        while 1:
+            client, address = dataSocket.accept()
+            res = client.recv(1024)
             if not res:
                 break
 
             file.write(res)
-
             file.close
+        client.close()
 
     else:
         #print context + " hi "
@@ -72,13 +99,19 @@ def main():
         clientSocket.connect((hostName, hostPort))
         sendCommand(clientSocket, context)
 
+        dataSocket.listen(backlog)
+        print "listening on data socket"
+
+        #accept incoming connections on data socket
+        #ref: http://ilab.cs.byu.edu/python/socket/echoserver.html
         while 1:
-            res = clientSocket.recv(500)
+            client, address = dataSocket.accept()
+            res = client.recv(1024)
             if not res:
                 break
             print res
-
-
+            client.close()
+            break
 
 if __name__ == "__main__":
     main()
