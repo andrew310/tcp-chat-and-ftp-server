@@ -25,7 +25,7 @@
 #define BACKLOG 10	 // how many pending connections queue will hold
 #define MAX 500 //max message size
 
-
+//handle zombies
 void sigchld_handler(int s)
 {
 	int saved_errno = errno;
@@ -136,11 +136,8 @@ char** getMessage(int connection){
     }
     //no error, print the message
     else {
-        //buf[numbytes] = '\0';
-        printf("Message: %s\n",buf);
         arg = strtok(buf, "\n");
 		arg = strtok(buf, " ");
-		printf("arg: %s\n", arg);
         int i = 0;
         while (arg != NULL) {
             arg = strtok(NULL, " ");
@@ -172,13 +169,11 @@ void execCmd(char** args, int connectionFd, char* ip){
 	hints.ai_socktype = SOCK_STREAM;
 
 	//find the data socket port number
-	if(strncmp(args[0], "-1", 2) == 0){
-		dataPort = args[1];
-		printf("dataport: %s\n", dataPort);
-	}
-	//find the data socket port number
-	else if(strncmp(args[0], "-g", 2) == 0){
+	if(strncmp(args[0], "-g", 2) == 0){
 		dataPort = args[2];
+		printf("dataport: %s\n", dataPort);
+	} else {
+		dataPort = args[1];
 		printf("dataport: %s\n", dataPort);
 	}
 
@@ -260,9 +255,10 @@ void execCmd(char** args, int connectionFd, char* ip){
 	}
 	//invalid command received
 	else{
+		printf("sending response...\n");
 		char errmsg[] = "ftserver: invalid command";
 		//send on data socket
-		sendMessage(errmsg, 15, sockfd);
+		sendMessage(errmsg, 25, sockfd);
 	}
 	//we dont need this connection anymore
 	close(sockfd);
@@ -334,7 +330,6 @@ int main(int argc, char *argv[])
 		if (!fork()) { // this is the child process
 			close(serverSocket); // child doesn't need the listener
       		tokens = getMessage(connectionSocket);
-			printf("token: %s\n", tokens[0]);
 			execCmd(tokens, connectionSocket, s);
 			close(dataSocket);
 			exit(0);
