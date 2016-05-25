@@ -85,12 +85,14 @@ def main():
         #ref: http://ilab.cs.byu.edu/python/socket/echoserver.html
         while 1:
             client, address = dataSocket.accept()
-            res = client.recv(1024)
-            if not res:
-                break
+            while 1:
+                res = client.recv(1024)
+                if not res:
+                    break
+                file.write(res)
+            break
 
-            file.write(res)
-            file.close
+        file.close
         client.close()
 
     else:

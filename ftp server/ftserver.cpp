@@ -165,11 +165,58 @@ void execCmd(char** args, int connectionFd, char* ip){
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	char s[INET6_ADDRSTRLEN];
+	char* dataPort;
+
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
+	//these if statements are to find where the port # for the data connection are in the command array
+	if(strncmp(args[0], "-1", 2) == 0){
+		dataPort = args[1];
+		printf("dataport: %s\n", dataPort);
+	}
+
+	else if(strncmp(args[0], "-g", 2) == 0){
+		dataPort = args[2];
+		printf("dataport: %s\n", dataPort);
+	}
+
+	//we are passing in "ip" which is the address information for the client connection
+	//basically using it and the port number we rcvd to create a new connection
+	if ((rv = getaddrinfo(ip, dataPort, &hints, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		exit(1);
+	}
+
+	// loop through all the results and connect to the first we can
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((sockfd = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol)) == -1) {
+			perror("client: socket");
+			continue;
+		}
+		//make connection
+		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sockfd);
+			perror("client: connect");
+			continue;
+		}
+
+	if (p == NULL) {
+		fprintf(stderr, "ftserver: failed to connect on data socket\n");
+		exit(1);
+	}
+	//get string form of address so we can print it
+	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+	s, sizeof s);
+	printf("ftserver: connecting to %s\n", s);
+
+	freeaddrinfo(servinfo); // all done with this structure
+
+		break;
+	}
 
     //if user wants to see list of files
     if(strncmp(args[0], "-1", 2) == 0){
@@ -183,75 +230,41 @@ void execCmd(char** args, int connectionFd, char* ip){
             i++;
         }
         length = i;
-				printf("sending...\n");
-
-		//set up data socket
-		if ((rv = getaddrinfo(ip, args[1], &hints, &servinfo)) != 0) {
-			fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-			exit(1);
-		}
-
-		// loop through all the results and connect to the first we can
-		for(p = servinfo; p != NULL; p = p->ai_next) {
-			if ((sockfd = socket(p->ai_family, p->ai_socktype,
-					p->ai_protocol)) == -1) {
-				perror("client: socket");
-				continue;
-			}
-
-			if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-				close(sockfd);
-				perror("client: connect");
-				continue;
-			}
-
-		if (p == NULL) {
-			fprintf(stderr, "ftserver: failed to connect on data socket\n");
-			exit(1);
-		}
-
-		inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-		s, sizeof s);
-		printf("ftserver: connecting to %s\n", s);
-
-		freeaddrinfo(servinfo); // all done with this structure
-
-			break;
-		}
+		printf("sending...\n");
 
         sendMessage(buff, length, sockfd);
-		close(sockfd);
     }
 
-		//if user wants to download a file
-		//read file into byte array
-		//ref: http://www.codecodex.com/wiki/Read_a_file_into_a_byte_array
-		//ref2: http://stackoverflow.com/questions/5594042/c-send-file-to-socket
-		else if (strncmp(args[0], "-g", 2) == 0 && args[1] != NULL) {
-				printf("opening file: %s\n", args[1]);
-				FILE *fl = fopen(args[1], "r");
-				if (fl == NULL) {
-						perror("error opening file");
-				}//TODO: add current directory information
-				fseek(fl, 0, SEEK_END);
-				long len = ftell(fl);
-				char *ret = (char*)malloc(len);
-				fseek(fl, 0, SEEK_SET);
-				printf("sending the goods...\n");
-				size_t nbytes = 0;
-				while ((nbytes = fread(ret, 1, 500, fl)) > 0) {
-						send(connectionFd, ret, nbytes, 0);
-				}
-				fclose(fl);
-				printf("done sending the goods\n");
-
+	//if user wants to download a file
+	//read file into byte array
+	//ref: http://www.codecodex.com/wiki/Read_a_file_into_a_byte_array
+	//ref2: http://stackoverflow.com/questions/5594042/c-send-file-to-socket
+	else if (strncmp(args[0], "-g", 2) == 0 && args[1] != NULL) {
+		printf("opening file: %s\n", args[1]);
+		FILE *fl = fopen(args[1], "r");
+		if (fl == NULL) {
+				perror("error opening file");
+		}//TODO: add current directory information
+		fseek(fl, 0, SEEK_END);
+		long len = ftell(fl);
+		char *ret = (char*)malloc(len);
+		fseek(fl, 0, SEEK_SET);
+		printf("sending the goods...\n");
+		size_t nbytes = 0;
+		while ((nbytes = fread(ret, 1, 500, fl)) > 0) {
+			send(sockfd, ret, nbytes, 0);
 		}
-		//invalid command received
-		else{
-			char errmsg[] = "ftserver: invalid command";
-			sendMessage(errmsg, 15, connectionFd);
-		}
+		fclose(fl);
+		printf("done sending the goods\n");
 
+	}
+	//invalid command received
+	else{
+		char errmsg[] = "ftserver: invalid command";
+		sendMessage(errmsg, 15, sockfd);
+	}
+	//we dont need this connection anymore
+	close(sockfd);
 }//end of execCmd
 
 
