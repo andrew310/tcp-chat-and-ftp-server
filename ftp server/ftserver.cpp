@@ -26,7 +26,6 @@
 #define MAX 500 //max message size
 
 
-
 void sigchld_handler(int s)
 {
 	int saved_errno = errno;
@@ -172,12 +171,12 @@ void execCmd(char** args, int connectionFd, char* ip){
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	//these if statements are to find where the port # for the data connection are in the command array
+	//find the data socket port number
 	if(strncmp(args[0], "-1", 2) == 0){
 		dataPort = args[1];
 		printf("dataport: %s\n", dataPort);
 	}
-
+	//find the data socket port number
 	else if(strncmp(args[0], "-g", 2) == 0){
 		dataPort = args[2];
 		printf("dataport: %s\n", dataPort);
@@ -231,7 +230,7 @@ void execCmd(char** args, int connectionFd, char* ip){
         }
         length = i;
 		printf("sending...\n");
-
+		//send message on data socket
         sendMessage(buff, length, sockfd);
     }
 
@@ -251,6 +250,7 @@ void execCmd(char** args, int connectionFd, char* ip){
 		fseek(fl, 0, SEEK_SET);
 		printf("sending the goods...\n");
 		size_t nbytes = 0;
+
 		while ((nbytes = fread(ret, 1, 500, fl)) > 0) {
 			send(sockfd, ret, nbytes, 0);
 		}
@@ -261,6 +261,7 @@ void execCmd(char** args, int connectionFd, char* ip){
 	//invalid command received
 	else{
 		char errmsg[] = "ftserver: invalid command";
+		//send on data socket
 		sendMessage(errmsg, 15, sockfd);
 	}
 	//we dont need this connection anymore
@@ -339,7 +340,6 @@ int main(int argc, char *argv[])
 			exit(0);
 		}
 		close(connectionSocket);  // parent doesn't need this
-
 
 	}//end of while loop
 

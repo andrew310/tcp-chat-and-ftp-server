@@ -8,26 +8,17 @@ import signal
 import os
 import SocketServer
 
-MSGLEN = 100
 
-
-#This will be used to listen on the data connection
-#reference: https://docs.python.org/2/library/socketserver.html
-class MyTCPHandler(SocketServer.BaseRequestHandler):
-    def handle(self):
-        # self.request is the TCP socket connected to the client
-        self.data = self.request.recv(1024).strip()
-        print "{} wrote:".format(self.client_address[0])
-        print self.data
-        # just send back the same data, but upper-cased
-        self.request.sendall(self.data.upper())
-
-
-
+#function: sendCommand
+#takes socket file descriptor and msg string
+#sends to specified socket
 def sendCommand(socket, msg):
     print "ftclient: sending the command to " + sys.argv[1]
     socket.send(msg)
 
+#function: getResponse
+#takes socket file descriptors
+#waits for message on socket
 def getResponse(socket):
     response = ""
     try:
@@ -42,11 +33,17 @@ def main():
     if(len(sys.argv) < 5):
         print "Usage: ./ftclient.py <hostname> <port number> <arg> <data port number>"
         sys.exit(0)
-        #basically just building a string out of the argv just like how it would appear in c
+
+    if (sys.argv[3] == '-g' and argsCount < 6):
+        print "Usage: ./ftclient.py <hostname> <port number> <arg> <data port number>"
+        sys.exit(0)
+
+    #basically just building a string out of the argv just like how it would appear in c
     elif(len(sys.argv) == 5):
         context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4]])
     elif(len(sys.argv) == 6):
         context = " ".join([sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], "\n"])
+
 
     #print len(sys.argv)
 
@@ -70,7 +67,7 @@ def main():
     #setup for signal interrupt to close socket
     signal.signal(signal.SIGINT, handler)
 
-
+    #handles the file transfer
     if sys.argv[3] == '-g':
         #connect
         clientSocket.connect((hostName, hostPort))
@@ -94,7 +91,9 @@ def main():
 
         file.close
         client.close()
+        print "received " + sys.argv[4] + '.download'
 
+    #ls requests
     else:
         #print context + " hi "
         #send on the dataSocket so it will be received here
