@@ -238,14 +238,24 @@ void execCmd(char** args, int connectionFd, char* ip){
 		FILE *fl = fopen(args[1], "r");
 		if (fl == NULL) {
 				perror("error opening file");
-		}//TODO: add current directory information
+				printf("sending response...\n");
+				char errmsg[] = "ftserver: file does not exist";
+				//send on main connection socket
+				sendMessage(errmsg, 30, connectionFd);
+				close(sockfd);
+				return;
+		} else {
+			char errmsg[] = "ftserver: file is on its way";
+			//send on main conenction socket
+			sendMessage(errmsg, 29, connectionFd);
+		}
 		fseek(fl, 0, SEEK_END);
 		long len = ftell(fl);
 		char *ret = (char*)malloc(len);
 		fseek(fl, 0, SEEK_SET);
 		printf("sending the goods...\n");
 		size_t nbytes = 0;
-
+		//send the file 500 bytes at a time
 		while ((nbytes = fread(ret, 1, 500, fl)) > 0) {
 			send(sockfd, ret, nbytes, 0);
 		}
@@ -257,8 +267,8 @@ void execCmd(char** args, int connectionFd, char* ip){
 	else{
 		printf("sending response...\n");
 		char errmsg[] = "ftserver: invalid command";
-		//send on data socket
-		sendMessage(errmsg, 25, sockfd);
+		//send on main connection socket
+		sendMessage(errmsg, 25, connectionFd);
 	}
 	//we dont need this connection anymore
 	close(sockfd);

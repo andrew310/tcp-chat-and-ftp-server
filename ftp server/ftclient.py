@@ -5,7 +5,7 @@
 import sys
 from socket import *
 import signal
-import os
+import fcntl, os
 import SocketServer
 
 
@@ -53,6 +53,10 @@ def main():
     #assign client socket, use my ip
     clientSocket = socket(AF_INET, SOCK_STREAM)
 
+    #connect
+    clientSocket.connect((hostName, hostPort))
+    sendCommand(clientSocket, context)
+
     #separate socket for receiving data
     host = ''
     port = int(sys.argv[argsCount-1])
@@ -60,21 +64,26 @@ def main():
     dataSocket = socket(AF_INET, SOCK_STREAM)
     dataSocket.bind((host, port))
 
-
     #close sockets safely when we ctrl+c
     def handler(sig, frame):
         clientSocket.close()
     #setup for signal interrupt to close socket
     signal.signal(signal.SIGINT, handler)
 
+    dataSocket.listen(backlog)
+    print "listening on data socket"
+
+    response = clientSocket.recv(500)
+    clientSocket.close()
+    print response
+    if "not exist" in response:
+        sys.exit(0)
+
+    elif "invalid" in response:
+        sys.exit(0)
+
     #handles the file transfer
     if sys.argv[3] == '-g':
-        #connect
-        clientSocket.connect((hostName, hostPort))
-        sendCommand(clientSocket, context)
-
-        dataSocket.listen(backlog)
-        print "listening on data socket"
 
         file = open(sys.argv[4] + ".downloaded", "a")
 
@@ -95,13 +104,6 @@ def main():
 
     #ls requests
     else:
-        #print context + " hi "
-        #send on the dataSocket so it will be received here
-        clientSocket.connect((hostName, hostPort))
-        sendCommand(clientSocket, context)
-
-        dataSocket.listen(backlog)
-        print "listening on data socket"
 
         #accept incoming connections on data socket
         #ref: http://ilab.cs.byu.edu/python/socket/echoserver.html
